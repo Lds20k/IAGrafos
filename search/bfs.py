@@ -1,0 +1,1 @@
+from struture.queue import Queue
