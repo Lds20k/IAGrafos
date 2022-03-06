@@ -195,6 +195,8 @@ def start():
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
+        self.setWindowIcon(QtGui.QIcon('games/chess/icon.jpg'))
+
         self.setGeometry(100, 100, 800, 500)
 
         self.widgetSvg = QSvgWidget(self)
@@ -204,6 +206,7 @@ class MainWindow(QWidget):
 
         self.chessboardSvg = chess.svg.board(self.chessboard).encode("UTF-8")
         self.widgetSvg.load(self.chessboardSvg)
+
 
         self.txtMove = QLineEdit(self)
         self.txtMove.setMaxLength(4)
@@ -244,7 +247,7 @@ class MainWindow(QWidget):
         self.widgetSvg.load(self.chessboardSvg)
 
         node = Node(self.chessboard)
-        move = self.minmax.search(node, 4).content.pop()
+        move = self.minmax.search(node, 2).content.pop()
         self.chessboard.push(move)
 
         # ATT Tabuleiro
