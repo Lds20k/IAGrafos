@@ -133,6 +133,8 @@ piece_position_values = {
     }
 }
 
+moves_notation = "Notation: \n\n (P) Pawn \t K - King\t B - Bishop\n R - Rock\t Q - Queen\t N - Knight"
+
 # Retorna a cor do turno
 turn_color = lambda turn: "Branco\0" if turn else "Preto\0"
 
@@ -176,20 +178,6 @@ def start():
     window = MainWindow()
     window.show()
     app.exec()
-    # board = Board()
-
-    # minmax = MinMax(generate_next, is_game_over, evaluation_heuristic)
-    # node = Node(board)
-    # print(board)
-
-    # while(not board.is_game_over()):
-    #     print(board.legal_moves)
-    #     move = input("Jogada: ")
-    #     board.push_san(move)
-    #     print(board)
-
-    #     board.push(minmax.search(node, 4).content.pop())
-    #     print(board)
 
 # Janela
 class MainWindow(QWidget):
@@ -207,29 +195,36 @@ class MainWindow(QWidget):
         self.chessboardSvg = chess.svg.board(self.chessboard).encode("UTF-8")
         self.widgetSvg.load(self.chessboardSvg)
 
+        self.tbxNotation = QTextEdit(self)
+        self.tbxNotation.setText(moves_notation)
+        self.tbxNotation.setGeometry(510, 10, 280, 80)
+        self.tbxNotation.setFont(QFont("Arial",10))
+        self.tbxNotation.setReadOnly(True)
+
+
+        self.tbxLegalMoves = QTextEdit(self)
+        self.tbxLegalMoves.setText(self.convert_list_of_moves())
+        self.tbxLegalMoves.setGeometry(510, 120, 280, 190)
+        self.tbxLegalMoves.setFont(QFont("Arial",10))
+        self.tbxLegalMoves.setReadOnly(True)
+
 
         self.txtMove = QLineEdit(self)
         self.txtMove.setMaxLength(4)
         self.txtMove.setFont(QFont("Arial", 10))
-        self.txtMove.setGeometry(510, 10, 280, 30)
+        self.txtMove.setGeometry(510, 340, 280, 30)
 
         self.btnJogar = QPushButton(self)
         self.btnJogar.setText("Jogar")
-        self.btnJogar.setGeometry(510, 60, 280, 30)
+        self.btnJogar.setGeometry(510, 380, 280, 30)
         self.btnJogar.clicked.connect(self.btnJogarOnClick)
-
-        self.tbxLegalMoves = QTextEdit(self)
-        self.tbxLegalMoves.setText(self.convert_list_of_moves())
-        self.tbxLegalMoves.setGeometry(510, 120, 280, 300)
-        self.tbxLegalMoves.setFont(QFont("Arial",10))
-        self.tbxLegalMoves.setReadOnly(True)
 
         self.minmax = MinMax(generate_next, is_game_over, evaluation_heuristic)
 
         self.setWindowTitle("Xadrez!")
 
     def convert_list_of_moves(self):
-        moves = ""
+        moves = "Possible moves:\n\n"
         i = 1
         print(self.chessboard.legal_moves)
         for move in self.chessboard.legal_moves:
@@ -240,7 +235,18 @@ class MainWindow(QWidget):
         return moves
 
     def btnJogarOnClick(self):
-        self.chessboard.push_san(self.txtMove.text())
+        move = self.txtMove.text().strip()
+        possible_moves = self.convert_list_of_moves()
+        if move not in possible_moves or move == "":
+            msgBox = QMessageBox()
+            msgBox.setText("Not found move!")
+            msgBox.setWindowTitle("ERROR")
+            msgBox.setWindowIcon(QtGui.QIcon('games/chess/icon.jpg'))
+            msgBox.exec()
+            self.txtMove.setText("")
+            return
+
+        self.chessboard.push_san(move)
 
         # ATT Tabuleiro
         self.chessboardSvg = chess.svg.board(self.chessboard).encode("UTF-8")
