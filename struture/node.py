@@ -16,9 +16,9 @@ class Node:
         return str(self.content) + '\n' + str(self.edges)
     
 class Edge:
-    def __init__(self, node:Node, cost):
+    def __init__(self, node:Node, value):
         self.node:Node = node
-        self.cost = cost
+        self.value = value
     
     def __str__(self) -> str:
         return str(self.node)
