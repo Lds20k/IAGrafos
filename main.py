@@ -1,3 +1,5 @@
+import games.chess.main
+
 def main():
     return 0
 
