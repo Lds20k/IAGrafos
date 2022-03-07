@@ -1,5 +1,7 @@
 from cgitb import text
+from email import message
 from lib2to3.pytree import convert
+from operator import truediv
 import random
 from sqlite3 import connect
 import chess
@@ -136,7 +138,7 @@ piece_position_values = {
 moves_notation = "Notation: \n\n (P) Pawn \t K - King\t B - Bishop\n R - Rock\t Q - Queen\t N - Knight"
 
 # Retorna a cor do turno
-turn_color = lambda turn: "Branco\0" if turn else "Preto\0"
+turn_color = lambda turn: "white\0" if turn else "black\0"
 
 def count_turns(board: Board):
     return board.fullmove_number * 2 + 1 if board.turn else board.fullmove_number * 2 
@@ -184,6 +186,7 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowIcon(QtGui.QIcon('games/chess/icon.jpg'))
+        self.setFixedSize(800, 500)
 
         self.setGeometry(100, 100, 800, 500)
 
@@ -214,14 +217,39 @@ class MainWindow(QWidget):
         self.txtMove.setFont(QFont("Arial", 10))
         self.txtMove.setGeometry(510, 340, 280, 30)
 
-        self.btnJogar = QPushButton(self)
-        self.btnJogar.setText("Jogar")
-        self.btnJogar.setGeometry(510, 380, 280, 30)
-        self.btnJogar.clicked.connect(self.btnJogarOnClick)
+        self.btnMakeMove = QPushButton(self)
+        self.btnMakeMove.setText("Move")
+        self.btnMakeMove.setGeometry(510, 380, 280, 30)
+        self.btnMakeMove.clicked.connect(self.btnMakeMoveOnClick)
+        self.btnMakeMove.setEnabled(False)
 
         self.minmax = MinMax(generate_next, is_game_over, evaluation_heuristic)
 
-        self.setWindowTitle("Xadrez!")
+        self.player_color = chess.WHITE
+        self.game_is_started = False
+
+        self.btnChangeColor = QPushButton(self)
+        self.btnChangeColor.setText("Switch Color")
+        self.btnChangeColor.setGeometry(510, 420, 135, 30)
+        self.btnChangeColor.clicked.connect(self.btnChangeColorOnClick)
+
+        self.btnStartGame = QPushButton(self)
+        self.btnStartGame.setText("Start")
+        self.btnStartGame.setGeometry(655, 420, 135, 30)
+        self.btnStartGame.clicked.connect(self.btnStartGameOnClick)
+
+        self.tmrBotPlay = QTimer(self)
+        self.tmrBotPlay.timeout.connect(self.botMove)
+
+        self.tmrWinCheck = QTimer(self)
+        self.tmrWinCheck.timeout.connect(self.winCheck)
+
+        self.lblColor = QLabel(self)
+        self.lblColor.setGeometry(510, 460, 280, 30)
+        self.lblColor.setFont(QFont("Arial", 10))
+        self.lblColor.setText(f"Your color is {turn_color(self.player_color)}")
+
+        self.setWindowTitle("Chess!")
 
     def convert_list_of_moves(self):
         moves = "Possible moves:\n\n"
@@ -234,31 +262,79 @@ class MainWindow(QWidget):
             i += 1
         return moves
 
-    def btnJogarOnClick(self):
-        move = self.txtMove.text().strip()
-        possible_moves = self.convert_list_of_moves()
-        if move not in possible_moves or move == "":
-            msgBox = QMessageBox()
-            msgBox.setText("Not found move!")
-            msgBox.setWindowTitle("ERROR")
-            msgBox.setWindowIcon(QtGui.QIcon('games/chess/icon.jpg'))
-            msgBox.exec()
-            self.txtMove.setText("")
+    def botMove(self):
+        if self.chessboard.turn == self.player_color:
             return
 
-        self.chessboard.push_san(move)
+        if not self.chessboard.is_game_over() and self.game_is_started:
+            node = Node(self.chessboard)
+            move = self.minmax.search(node, 2).content.pop()
+            self.chessboard.push(move)
 
-        # ATT Tabuleiro
-        self.chessboardSvg = chess.svg.board(self.chessboard).encode("UTF-8")
-        self.widgetSvg.load(self.chessboardSvg)
+            # ATT Tabuleiro
+            self.chessboardSvg = chess.svg.board(self.chessboard).encode("UTF-8")
+            self.widgetSvg.load(self.chessboardSvg)
+            
+            self.tbxLegalMoves.setText(self.convert_list_of_moves())
+            self.btnMakeMove.setEnabled(True)
 
-        node = Node(self.chessboard)
-        move = self.minmax.search(node, 2).content.pop()
-        self.chessboard.push(move)
+    def btnMakeMoveOnClick(self):
+        if not self.chessboard.turn == self.player_color:
+            return
 
-        # ATT Tabuleiro
-        self.chessboardSvg = chess.svg.board(self.chessboard).encode("UTF-8")
-        self.widgetSvg.load(self.chessboardSvg)
+        if not self.chessboard.is_game_over() and self.game_is_started:
+            move = self.txtMove.text().strip()
+            possible_moves = self.convert_list_of_moves()
+            if move not in possible_moves or move == "":
+                self.message("ERROR", "Not found move!")
+                self.txtMove.setText("")
+                return
 
-        self.tbxLegalMoves.setText(self.convert_list_of_moves())
-        self.txtMove.setText("")
+            self.chessboard.push_san(move)
+
+            # ATT Tabuleiro
+            self.chessboardSvg = chess.svg.board(self.chessboard).encode("UTF-8")
+            self.widgetSvg.load(self.chessboardSvg)
+
+            self.tbxLegalMoves.setText(self.convert_list_of_moves())
+            self.btnMakeMove.setEnabled(False)
+            self.txtMove.setText("")
+
+    def btnChangeColorOnClick(self):
+        if self.game_is_started:
+            return
+        
+        self.change_color()
+        self.message("Color Switch", "Colo change to " + turn_color(self.player_color))
+        self.lblColor.setText(f"Your color is {turn_color(self.player_color)}")
+    
+    def winCheck(self):
+        if self.chessboard.is_game_over() and self.game_is_started:
+            self.message("Game end!", f"{turn_color(self.chessboard.outcome().winner).capitalize()} wons the game!")
+            self.game_is_started = False
+    
+    def btnStartGameOnClick(self):
+        self.btnChangeColor.setEnabled(False)
+        self.btnStartGame.setEnabled(False)
+
+        self.message("Atention!", "Game is started!")
+
+        self.game_is_started = True
+        self.tmrBotPlay.start(200)
+        self.tmrWinCheck.start(200)
+
+        if self.chessboard.turn == self.player_color:
+            self.btnMakeMove.setEnabled(True)
+        else:
+            self.btnMakeMove.setEnabled(False)
+    
+    def change_color(self):
+        # Da um swtich entre as cores
+        self.player_color = not self.player_color
+    
+    def message(self, window_title, message):
+        msgBox = QMessageBox()
+        msgBox.setText(message)
+        msgBox.setWindowTitle(window_title)
+        msgBox.setWindowIcon(QtGui.QIcon('games/chess/icon.jpg'))
+        msgBox.exec()
