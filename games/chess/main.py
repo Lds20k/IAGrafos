@@ -11,13 +11,10 @@ from struture.node import Edge, Node
 from search.minmax import MinMax
 
 from PyQt5.QtSvg import QSvgWidget
-from PyQt5.QtGui import QIntValidator, QFont
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5 import QtGui
-
-def __calculate_cost__(board: Board):
-    return 0
 
 def generate_next(node: Node):
     board: Board = node.content
@@ -58,6 +55,18 @@ def calculate_material(board: Board):
         if piece.color == chess.BLACK:
             black_material += piece_values[piece.piece_type]
     return white_material - black_material if board.turn else black_material - white_material
+
+first_moves = {
+    chess.WHITE: {
+        "sicilian_defense":['e4'],
+        "slavic_defense":['d4','c4'],
+        "french_defense":['d4','e4']
+    }, chess.BLACK: {
+        "sicilian_defense":['e5'],
+        "slavic_defense":['d5','c5'],
+        "french_defense":['d5','e5'],
+    }
+}
 
 # Peso das posições para cada peça
 piece_position_values = {
@@ -174,6 +183,17 @@ def evaluation_heuristic(node: Node):
 
     return heuristic_value
 
+def convert_list_of_moves(board):
+    moves = "Possible moves:\n\n"
+    i = 1
+    print(board.legal_moves)
+    for move in board.legal_moves:
+        moves += str(board.san(move)) + "\t"
+        if i % 4 == 0:
+            moves += "\n"
+        i += 1
+    return moves
+
 # Inicia o jogo
 def start():
     app = QApplication([])
@@ -206,7 +226,7 @@ class MainWindow(QWidget):
 
 
         self.tbxLegalMoves = QTextEdit(self)
-        self.tbxLegalMoves.setText(self.convert_list_of_moves())
+        self.tbxLegalMoves.setText(convert_list_of_moves(self.chessboard))
         self.tbxLegalMoves.setGeometry(510, 120, 280, 190)
         self.tbxLegalMoves.setFont(QFont("Arial",10))
         self.tbxLegalMoves.setReadOnly(True)
@@ -251,17 +271,6 @@ class MainWindow(QWidget):
 
         self.setWindowTitle("Chess!")
 
-    def convert_list_of_moves(self):
-        moves = "Possible moves:\n\n"
-        i = 1
-        print(self.chessboard.legal_moves)
-        for move in self.chessboard.legal_moves:
-            moves += str(self.chessboard.san(move)) + "\t"
-            if i % 4 == 0:
-                moves += "\n"
-            i += 1
-        return moves
-
     def botMove(self):
         if self.chessboard.turn == self.player_color:
             return
@@ -275,7 +284,7 @@ class MainWindow(QWidget):
             self.chessboardSvg = chess.svg.board(self.chessboard).encode("UTF-8")
             self.widgetSvg.load(self.chessboardSvg)
             
-            self.tbxLegalMoves.setText(self.convert_list_of_moves())
+            self.tbxLegalMoves.setText(convert_list_of_moves(self.chessboard))
             self.btnMakeMove.setEnabled(True)
 
     def btnMakeMoveOnClick(self):
@@ -284,7 +293,7 @@ class MainWindow(QWidget):
 
         if not self.chessboard.is_game_over() and self.game_is_started:
             move = self.txtMove.text().strip()
-            possible_moves = self.convert_list_of_moves()
+            possible_moves = convert_list_of_moves(self.chessboard)
             if move not in possible_moves or move == "":
                 self.message("ERROR", "Not found move!")
                 self.txtMove.setText("")
@@ -296,7 +305,7 @@ class MainWindow(QWidget):
             self.chessboardSvg = chess.svg.board(self.chessboard).encode("UTF-8")
             self.widgetSvg.load(self.chessboardSvg)
 
-            self.tbxLegalMoves.setText(self.convert_list_of_moves())
+            self.tbxLegalMoves.setText(convert_list_of_moves(self.chessboard))
             self.btnMakeMove.setEnabled(False)
             self.txtMove.setText("")
 
